@@ -1,0 +1,131 @@
+﻿@* @page "/Account/Login" *@
+@page "/login"
+
+
+@using System.ComponentModel.DataAnnotations
+@using BlazorServerJWT.Auth
+@using Microsoft.AspNetCore.Authentication
+@using System.Security.Claims
+@inject NavigationManager Navigation
+
+@inject CustomAuthenticationStateProvider auth;
+
+
+@* @inject SignInManager<ApplicationUser> SignInManager *@
+@inject ILogger<Login> Logger
+@inject NavigationManager NavigationManager
+@* @inject IdentityRedirectManager RedirectManager *@
+
+<PageTitle>Log in</PageTitle>
+
+<h1>Log in</h1>
+
+
+<div class="row">
+    <div class="col-md-5">
+        <AuthorizeView>
+            <Authorized>
+                <h1 style="color:green">You are Authenticated</h1>
+            </Authorized>
+            <NotAuthorized>
+                <h1 style="color:red">You are not Authenticated</h1>
+            </NotAuthorized>
+        </AuthorizeView>
+
+        <section>
+            <EditForm Model="Input" method="post" OnValidSubmit="Auth" FormName="Login">
+                <DataAnnotationsValidator />
+                <hr />
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="Input.Username" class="form-control" aria-required="true" />
+                    <label for="Username" class="form-label">Username</label>
+                    <ValidationMessage For="() => Input.Username" class="text-danger" />
+                </div>
+                <div class="form-floating mb-3">
+                    <InputText type="password" @bind-Value="Input.Password" class="form-control" aria-required="true" />
+                    <label for="password" class="form-label">Password</label>
+                    <ValidationMessage For="() => Input.Password" class="text-danger" />
+                </div>
+                <div>
+                    <button type="submit" class="w-100 btn btn-lg btn-primary">Login</button>
+                </div>
+            </EditForm>
+        </section>
+
+    </div>
+    <div class="col-md-5">
+        <AuthorizeView>
+            Hello @user - @role <button @onclick="Logout" class="btn btn-secondary">Logout</button>
+        </AuthorizeView>
+    </div>
+</div>
+
+
+@code {
+    public string user { get; set; }
+    public string role { get; set; }
+
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await auth.GetAuthenticationStateAsync();
+        if (state != null && state.User.Identity.IsAuthenticated)
+        {
+            user = state.User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Name)?.Value;
+            role = state.User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Role)?.Value;
+        }
+    }
+
+    public async Task Auth()
+    {
+        //validate the user.
+        string username = Input.Username;
+        string password = Input.Password;
+        //component to validate your username & password
+        //if login success
+
+        var user = new User();
+        if (username.ToLower() == "admin")
+        {
+            user.Username = "Admin";
+            user.Role = "Admin";
+        }
+        else if (username.ToLower() == "user")
+        {
+            user.Username = "User";
+            user.Role = "User";
+        }
+        else
+        {
+            return;
+        }
+
+        await auth.AuthenticateUser(user);
+        Navigation.NavigateTo("");
+
+        // await auth.AuthenticateUser(user);
+        // await OnInitializedAsync();
+    }
+
+    public async Task Logout()
+    {
+        await auth.Logout();
+    }
+
+
+    public class InputModel
+    {
+        [Required]
+        public string Username { get; set; } = string.Empty;
+
+
+        [Required]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = string.Empty;
+    }
+
+
+}
